@@ -1420,7 +1420,7 @@
     </div>
     <div class="author-body">
       <p class="reveal">I first encountered Demis Hassabis the way millions of people did: through a video game. I was a kid in the English countryside, glued to a chunky PC, building roller coasters and burger stalls in <em>Theme Park</em>. I had no idea that the teenager who had helped design it was already thinking about artificial intelligence, or that his career would trace an arc from that game to the Nobel Prize. I just knew the game was brilliant.</p>
-      <p class="reveal">Decades later, living in San Francisco, I found myself returning to the story. Not because of nostalgia, but because of recognition. I grew up in a small village in the UK with a dream of making it to Silicon Valley. In 2013, with no connections and no safety net, I moved to San Francisco to co-found <strong>Lemonaid Health</strong>, a telehealth company built on the belief that technology could make healthcare more accessible. Over eight years my team and I lived the roller coaster ride of running a startup (no longer in a video game). <strong>We sold the company for four hundred million dollars in 2021</strong> and I became a venture capitalist and coach to founders.</p>
+      <p class="reveal">Decades later, living in San Francisco, I found myself returning to the story. Not because of nostalgia, but because of recognition. I grew up in a small village in the UK with a dream of making it to Silicon Valley. In 2013, with no connections and no safety net, I moved to San Francisco to co-found <strong>Lemonaid Health</strong>, a telehealth company built on the belief that technology could make healthcare more accessible. Over eight years my team and I lived the roller coaster ride of running a startup (no longer in a video game). <strong>We sold the company for four hundred million dollars in 2021</strong> and I became a venture capitalist. I'm now a <strong>General Partner at Flex Capital</strong> and invest $500k in pre-seed and seed stage AI companies.</p>
       <p class="reveal">The entrepreneurial journey is, at its core, a story about conviction: about believing something is possible before you have any evidence, about persuading other people to believe it too, and about enduring the years when it looks like it might not work. Hassabis had all of that, but at a scale and with stakes that dwarfed anything I had experienced. He was not trying to build a company. <strong>He was trying to build a mind.</strong></p>
       <p class="reveal">What fascinated me most was the gap between how the world saw DeepMind — as a Google subsidiary, a research lab, a maker of game-playing programs — and what Hassabis was actually trying to do. The ambition was so large that most people simply could not see it. I wanted to write the book that made it visible: the human story behind the most consequential scientific project of our time.</p>
       <p class="reveal">I'm not a natural writer. In fact English was one of my weakest subjects at school. So this book was written by AI and I served as the director and editor.</p>
@@ -1470,194 +1470,365 @@
     });
 
     // Trailer animation engine
-    // === TRAILER MUSIC ===
-// Cinematic trailer score using Web Audio API
-// Timeline: 0-5s opening, 5-16s milestones build, 17-25s book reveal, 26-30s fade
+    // === TRAILER MUSIC v2 ===
+// Cinematic trailer score v2 — Web Audio API
+// 30s timeline: Opening mystery → Milestone tension build → Book reveal triumph → Fade
 let audioCtx = null;
 let musicNodes = [];
+let musicGainNode = null;
 
 function stopTrailerMusic() {
-  musicNodes.forEach(n => {
-    try { n.stop ? n.stop() : null; } catch(e) {}
-    try { n.disconnect(); } catch(e) {}
-  });
-  musicNodes = [];
-  if (audioCtx) {
-    audioCtx.close().catch(() => {});
-    audioCtx = null;
+  if (musicGainNode) {
+    try {
+      const now = audioCtx.currentTime;
+      musicGainNode.gain.cancelScheduledValues(now);
+      musicGainNode.gain.setValueAtTime(musicGainNode.gain.value, now);
+      musicGainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+    } catch(e) {}
   }
+  setTimeout(() => {
+    musicNodes.forEach(n => {
+      try { if (n.stop) n.stop(); } catch(e) {}
+      try { n.disconnect(); } catch(e) {}
+    });
+    musicNodes = [];
+    if (audioCtx) {
+      audioCtx.close().catch(() => {});
+      audioCtx = null;
+    }
+    musicGainNode = null;
+  }, 600);
 }
 
 function playTrailerMusic() {
-  stopTrailerMusic();
+  if (audioCtx) { stopTrailerMusic(); }
+  // Small delay to ensure cleanup
+  setTimeout(_startTrailerMusic, 100);
+}
+
+function _startTrailerMusic() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const ac = audioCtx;
-  const now = ac.currentTime;
-  const masterGain = ac.createGain();
-  masterGain.gain.setValueAtTime(0, now);
-  masterGain.gain.linearRampToValueAtTime(0.35, now + 1);
-  masterGain.gain.setValueAtTime(0.35, now + 27);
-  masterGain.gain.linearRampToValueAtTime(0, now + 31);
-  masterGain.connect(ac.destination);
-  musicNodes.push(masterGain);
+  const t = ac.currentTime + 0.05;
+  musicNodes = [];
 
-  // Reverb via convolver (simple impulse response)
+  // === MASTER CHAIN ===
+  const master = ac.createGain();
+  master.gain.setValueAtTime(0, t);
+  master.gain.linearRampToValueAtTime(0.5, t + 2);
+  master.gain.setValueAtTime(0.5, t + 27);
+  master.gain.linearRampToValueAtTime(0, t + 31);
+  master.connect(ac.destination);
+  musicNodes.push(master);
+  musicGainNode = master;
+
+  // Compressor for glue
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -18;
+  comp.knee.value = 12;
+  comp.ratio.value = 4;
+  comp.attack.value = 0.01;
+  comp.release.value = 0.15;
+  comp.connect(master);
+  musicNodes.push(comp);
+
+  // === REVERB ===
   const convolver = ac.createConvolver();
-  const reverbLen = 3 * ac.sampleRate;
+  const reverbLen = 4 * ac.sampleRate;
   const impulse = ac.createBuffer(2, reverbLen, ac.sampleRate);
   for (let ch = 0; ch < 2; ch++) {
-    const data = impulse.getChannelData(ch);
+    const d = impulse.getChannelData(ch);
     for (let i = 0; i < reverbLen; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLen, 2.5);
+      const decay = Math.pow(1 - i / reverbLen, 2);
+      d[i] = (Math.random() * 2 - 1) * decay * 0.7;
+      // Add early reflections
+      if (i < ac.sampleRate * 0.08 && Math.random() < 0.02) {
+        d[i] += (Math.random() * 2 - 1) * 0.4;
+      }
     }
   }
   convolver.buffer = impulse;
-  const reverbGain = ac.createGain();
-  reverbGain.gain.value = 0.3;
-  convolver.connect(reverbGain);
-  reverbGain.connect(masterGain);
-  musicNodes.push(convolver, reverbGain);
+  const reverbSend = ac.createGain();
+  reverbSend.gain.value = 0.35;
+  convolver.connect(reverbSend);
+  reverbSend.connect(comp);
+  musicNodes.push(convolver, reverbSend);
 
-  // Dry bus
-  const dryGain = ac.createGain();
-  dryGain.gain.value = 0.7;
-  dryGain.connect(masterGain);
-  musicNodes.push(dryGain);
+  // Dry path
+  const dry = ac.createGain();
+  dry.gain.value = 0.65;
+  dry.connect(comp);
+  musicNodes.push(dry);
 
-  function createOsc(type, freq, startTime, endTime, gainVal, destination) {
-    const osc = ac.createOscillator();
-    const g = ac.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, now + startTime);
-    g.gain.setValueAtTime(0, now + startTime);
-    g.gain.linearRampToValueAtTime(gainVal, now + startTime + 1.5);
-    g.gain.setValueAtTime(gainVal, now + endTime - 1.5);
-    g.gain.linearRampToValueAtTime(0, now + endTime);
-    osc.connect(g);
-    g.connect(destination || dryGain);
-    g.connect(convolver);
-    osc.start(now + startTime);
-    osc.stop(now + endTime + 0.1);
-    musicNodes.push(osc, g);
-    return osc;
+  // Helper: create rich pad (detuned oscillator pairs for warmth)
+  function pad(freq, start, end, vol, type) {
+    type = type || 'sine';
+    const detuneCents = 8;
+    [-detuneCents, detuneCents].forEach(det => {
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      const f = ac.createBiquadFilter();
+      o.type = type;
+      o.frequency.value = freq;
+      o.detune.value = det;
+      f.type = 'lowpass';
+      f.frequency.value = freq * 3;
+      f.Q.value = 0.5;
+      g.gain.setValueAtTime(0, t + start);
+      g.gain.linearRampToValueAtTime(vol * 0.5, t + start + Math.min(2, (end - start) * 0.3));
+      g.gain.setValueAtTime(vol * 0.5, t + end - Math.min(2, (end - start) * 0.25));
+      g.gain.linearRampToValueAtTime(0, t + end);
+      o.connect(f);
+      f.connect(g);
+      g.connect(dry);
+      g.connect(convolver);
+      o.start(t + start);
+      o.stop(t + end + 0.5);
+      musicNodes.push(o, g, f);
+    });
   }
 
-  // === LAYER 1: Deep drone (entire duration) ===
-  // D1 (36.71 Hz) and A1 (55 Hz) — dark fifth
-  createOsc('sine', 36.71, 0, 30, 0.25);
-  createOsc('sine', 55, 0, 30, 0.18);
-  // Sub-octave rumble
-  createOsc('sine', 18.35, 0, 30, 0.12);
-
-  // === LAYER 2: Slow pad chords ===
-  // Scene 1 (0-5s): D minor — D3, F3, A3
-  createOsc('sine', 146.83, 0, 5.5, 0.06);   // D3
-  createOsc('triangle', 174.61, 0, 5.5, 0.04); // F3
-  createOsc('sine', 220, 0.5, 5.5, 0.05);      // A3
-
-  // Scene 2 milestones (6-16s): Building tension
-  // Bb minor — Bb2, Db3, F3 (darker)
-  createOsc('sine', 116.54, 5.5, 10, 0.06);   // Bb2
-  createOsc('triangle', 138.59, 5.5, 10, 0.04); // Db3
-  createOsc('sine', 174.61, 6, 10, 0.05);      // F3
-
-  // Rising: C minor — C3, Eb3, G3
-  createOsc('sine', 130.81, 10, 14, 0.07);
-  createOsc('triangle', 155.56, 10, 14, 0.05);
-  createOsc('sine', 196.00, 10.5, 14, 0.06);
-
-  // Tension peak: D minor 7 — D3, F3, A3, C4
-  createOsc('sine', 146.83, 14, 17.5, 0.08);
-  createOsc('triangle', 174.61, 14, 17.5, 0.06);
-  createOsc('sine', 220, 14, 17.5, 0.07);
-  createOsc('sine', 261.63, 14.5, 17.5, 0.05);
-
-  // === Scene 3: Book reveal (17-26s) — D major (resolution!) ===
-  createOsc('sine', 146.83, 17, 27, 0.09);    // D3
-  createOsc('triangle', 185.00, 17.5, 27, 0.06); // F#3
-  createOsc('sine', 220, 17.5, 27, 0.07);      // A3
-  createOsc('sine', 293.66, 18, 27, 0.05);     // D4 (octave)
-
-  // === LAYER 3: Milestone hits (percussive shimmer) ===
-  const milestoneTimings = [6.5, 8.5, 10.5, 12.5, 14.5]; // matches JS
-  milestoneTimings.forEach((t, i) => {
-    // Rising pitch for each milestone
-    const freq = 440 * Math.pow(2, (i * 2) / 12); // up by whole tones
-    const hit = ac.createOscillator();
-    const hitGain = ac.createGain();
-    hit.type = 'sine';
-    hit.frequency.setValueAtTime(freq, now + t);
-    hit.frequency.exponentialRampToValueAtTime(freq * 1.5, now + t + 0.8);
-    hitGain.gain.setValueAtTime(0, now + t);
-    hitGain.gain.linearRampToValueAtTime(0.08 + i * 0.015, now + t + 0.05);
-    hitGain.gain.exponentialRampToValueAtTime(0.001, now + t + 1.8);
-    hit.connect(hitGain);
-    hitGain.connect(dryGain);
-    hitGain.connect(convolver);
-    hit.start(now + t);
-    hit.stop(now + t + 2);
-    musicNodes.push(hit, hitGain);
-
-    // Sub-impact
-    const sub = ac.createOscillator();
-    const subG = ac.createGain();
-    sub.type = 'sine';
-    sub.frequency.setValueAtTime(60 + i * 5, now + t);
-    sub.frequency.exponentialRampToValueAtTime(30, now + t + 0.5);
-    subG.gain.setValueAtTime(0, now + t);
-    subG.gain.linearRampToValueAtTime(0.12, now + t + 0.02);
-    subG.gain.exponentialRampToValueAtTime(0.001, now + t + 0.8);
-    sub.connect(subG);
-    subG.connect(dryGain);
-    sub.start(now + t);
-    sub.stop(now + t + 1);
-    musicNodes.push(sub, subG);
-  });
-
-  // === LAYER 4: Book reveal swell (17.5s) ===
-  const swellFreqs = [293.66, 369.99, 440, 587.33]; // D4, F#4, A4, D5
-  swellFreqs.forEach((freq, i) => {
-    const osc = ac.createOscillator();
+  // Helper: filtered noise burst (for impacts)
+  function noiseBurst(start, duration, freq, vol, q) {
+    const bufLen = Math.ceil(duration * ac.sampleRate);
+    const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const filt = ac.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.value = freq;
+    filt.Q.value = q || 2;
     const g = ac.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    g.gain.setValueAtTime(0, now + 17.5);
-    g.gain.linearRampToValueAtTime(0.04, now + 18 + i * 0.3);
-    g.gain.setValueAtTime(0.04, now + 25);
-    g.gain.linearRampToValueAtTime(0, now + 28);
-    osc.connect(g);
+    g.gain.setValueAtTime(vol, t + start);
+    g.gain.exponentialRampToValueAtTime(0.001, t + start + duration);
+    src.connect(filt);
+    filt.connect(g);
+    g.connect(dry);
     g.connect(convolver);
-    g.connect(dryGain);
-    osc.start(now + 17.5);
-    osc.stop(now + 28.5);
-    musicNodes.push(osc, g);
+    src.start(t + start);
+    src.stop(t + start + duration + 0.1);
+    musicNodes.push(src, filt, g);
+  }
+
+  // Helper: pitched bell/chime
+  function bell(freq, start, duration, vol) {
+    const harmonics = [1, 2.756, 4.589, 6.984];
+    const gains =     [1, 0.4,   0.15,  0.06];
+    harmonics.forEach((h, i) => {
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq * h;
+      g.gain.setValueAtTime(vol * gains[i], t + start);
+      g.gain.exponentialRampToValueAtTime(0.001, t + start + duration * (1 - i * 0.15));
+      o.connect(g);
+      g.connect(dry);
+      g.connect(convolver);
+      o.start(t + start);
+      o.stop(t + start + duration + 0.5);
+      musicNodes.push(o, g);
+    });
+  }
+
+  // Helper: sub boom
+  function boom(start, vol) {
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(80, t + start);
+    o.frequency.exponentialRampToValueAtTime(25, t + start + 1.2);
+    g.gain.setValueAtTime(0, t + start);
+    g.gain.linearRampToValueAtTime(vol, t + start + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + start + 1.5);
+    o.connect(g);
+    g.connect(dry);
+    o.start(t + start);
+    o.stop(t + start + 2);
+    musicNodes.push(o, g);
+  }
+
+  // =====================================================
+  // SCORE
+  // =====================================================
+
+  // === FOUNDATION: Sub-bass drone (0-30s) ===
+  // D1 with gentle pulsing
+  const subOsc = ac.createOscillator();
+  const subGain = ac.createGain();
+  const subLfo = ac.createOscillator();
+  const subLfoGain = ac.createGain();
+  subOsc.type = 'sine';
+  subOsc.frequency.value = 36.71; // D1
+  subLfo.type = 'sine';
+  subLfo.frequency.value = 0.15; // very slow pulse
+  subLfoGain.gain.value = 0.03;
+  subLfo.connect(subLfoGain);
+  subLfoGain.connect(subGain.gain);
+  subGain.gain.setValueAtTime(0, t);
+  subGain.gain.linearRampToValueAtTime(0.2, t + 3);
+  subGain.gain.setValueAtTime(0.2, t + 14);
+  subGain.gain.linearRampToValueAtTime(0.3, t + 17); // swell for reveal
+  subGain.gain.setValueAtTime(0.3, t + 26);
+  subGain.gain.linearRampToValueAtTime(0, t + 30);
+  subOsc.connect(subGain);
+  subGain.connect(dry);
+  subOsc.start(t);
+  subOsc.stop(t + 31);
+  subLfo.start(t);
+  subLfo.stop(t + 31);
+  musicNodes.push(subOsc, subGain, subLfo, subLfoGain);
+
+  // === ACT 1: MYSTERY (0-5s) — Dm sparse, questioning ===
+  pad(73.42, 0, 5.5, 0.08, 'sine');      // D2
+  pad(146.83, 0.5, 5.5, 0.06, 'sine');   // D3
+  pad(174.61, 1, 5.5, 0.04, 'triangle'); // F3
+  pad(220, 1.5, 5.5, 0.035, 'sine');     // A3
+
+  // Lonely high note — motif
+  bell(587.33, 1.2, 4, 0.02);  // D5
+  bell(554.37, 2.8, 3, 0.015); // Db5 — tension
+
+  // Atmospheric noise wash
+  noiseBurst(0, 5, 2000, 0.015, 0.5);
+
+  // === TRANSITION (5-6s) ===
+  boom(5.2, 0.15);
+  noiseBurst(5.2, 1.5, 200, 0.06, 1);
+
+  // === ACT 2: MILESTONES BUILD (6-16.5s) ===
+  // Harmony darkens then rises: Bbm → Cm → Dm7 → D (resolution preparing)
+
+  // Phase 1 (6-9s): Bbm — dark, uncertain
+  pad(58.27, 5.5, 9.5, 0.08, 'sine');     // Bb1
+  pad(116.54, 5.8, 9.5, 0.06, 'sine');    // Bb2
+  pad(138.59, 6, 9.5, 0.05, 'triangle');  // Db3
+  pad(174.61, 6.2, 9.5, 0.04, 'sine');    // F3
+
+  // Phase 2 (9.5-12.5s): Cm — rising
+  pad(65.41, 9.5, 12.8, 0.08, 'sine');    // C2
+  pad(130.81, 9.8, 12.8, 0.06, 'sine');   // C3
+  pad(155.56, 10, 12.8, 0.05, 'triangle');// Eb3
+  pad(196.00, 10, 12.8, 0.05, 'sine');    // G3
+
+  // Phase 3 (12.5-16.5s): Dm7 — tension peak, adding upper extensions
+  pad(73.42, 12.5, 17, 0.09, 'sine');     // D2
+  pad(146.83, 12.8, 17, 0.07, 'sine');    // D3
+  pad(174.61, 12.8, 17, 0.06, 'triangle');// F3
+  pad(220, 13, 17, 0.06, 'sine');         // A3
+  pad(261.63, 13.5, 17, 0.04, 'sine');    // C4 (7th)
+  pad(329.63, 14, 17, 0.03, 'triangle');  // E4 (9th — tension)
+
+  // Milestone impacts — each bigger than the last
+  const mTimes = [6.5, 8.5, 10.5, 12.5, 14.5];
+  const mNotes = [293.66, 329.63, 369.99, 415.30, 493.88]; // D4,E4,F#4,Ab4,B4 — rising tension
+  mTimes.forEach((mt, i) => {
+    const intensity = 0.5 + i * 0.18;
+
+    // Sub boom — increasing
+    boom(mt, 0.1 + i * 0.04);
+
+    // Noise impact — widening
+    noiseBurst(mt, 0.8 + i * 0.2, 300 + i * 200, 0.04 + i * 0.012, 1.5);
+
+    // Bell tone — ascending
+    bell(mNotes[i], mt, 2.5 - i * 0.2, 0.025 + i * 0.008);
+
+    // Upper shimmer on hits 3-5
+    if (i >= 2) {
+      bell(mNotes[i] * 2, mt + 0.05, 2, 0.01 + (i - 2) * 0.005);
+    }
+
+    // Rhythmic ticking accelerates toward end
+    if (i >= 3) {
+      for (let tick = 0; tick < 3; tick++) {
+        noiseBurst(mt + 0.4 + tick * 0.25, 0.08, 4000, 0.015, 4);
+      }
+    }
   });
 
-  // === LAYER 5: High ethereal shimmer ===
-  [0, 8, 17].forEach(startT => {
-    const lfo = ac.createOscillator();
-    const lfoGain = ac.createGain();
-    const shimmer = ac.createOscillator();
-    const shimmerGain = ac.createGain();
-    lfo.type = 'sine';
-    lfo.frequency.value = 0.3 + startT * 0.02;
-    lfoGain.gain.value = 3;
-    shimmer.type = 'sine';
-    shimmer.frequency.value = 1174.66; // D6
-    shimmerGain.gain.setValueAtTime(0, now + startT);
-    shimmerGain.gain.linearRampToValueAtTime(0.012, now + startT + 2);
-    shimmerGain.gain.setValueAtTime(0.012, now + startT + 7);
-    shimmerGain.gain.linearRampToValueAtTime(0, now + startT + 9);
-    lfo.connect(lfoGain);
-    lfoGain.connect(shimmer.frequency);
-    shimmer.connect(shimmerGain);
-    shimmerGain.connect(convolver);
-    lfo.start(now + startT);
-    shimmer.start(now + startT);
-    lfo.stop(now + startT + 10);
-    shimmer.stop(now + startT + 10);
-    musicNodes.push(lfo, lfoGain, shimmer, shimmerGain);
-  });
+  // Rising tension string between milestones
+  const riser = ac.createOscillator();
+  const riserGain = ac.createGain();
+  const riserFilter = ac.createBiquadFilter();
+  riser.type = 'sawtooth';
+  riser.frequency.setValueAtTime(110, t + 12);
+  riser.frequency.exponentialRampToValueAtTime(440, t + 16.5);
+  riserFilter.type = 'lowpass';
+  riserFilter.frequency.setValueAtTime(200, t + 12);
+  riserFilter.frequency.exponentialRampToValueAtTime(2000, t + 16.5);
+  riserFilter.Q.value = 2;
+  riserGain.gain.setValueAtTime(0, t + 12);
+  riserGain.gain.linearRampToValueAtTime(0.03, t + 14);
+  riserGain.gain.linearRampToValueAtTime(0.06, t + 16.3);
+  riserGain.gain.linearRampToValueAtTime(0, t + 17);
+  riser.connect(riserFilter);
+  riserFilter.connect(riserGain);
+  riserGain.connect(dry);
+  riserGain.connect(convolver);
+  riser.start(t + 12);
+  riser.stop(t + 17.5);
+  musicNodes.push(riser, riserGain, riserFilter);
+
+  // === BIG TRANSITION HIT (16.5-17.5s) ===
+  boom(16.8, 0.35);
+  noiseBurst(16.8, 2.5, 250, 0.08, 0.8);
+  noiseBurst(16.8, 0.3, 6000, 0.04, 3);  // high crack
+  // Silence moment — all pads have ended, just reverb tail + sub
+
+  // === ACT 3: BOOK REVEAL — D MAJOR TRIUMPH (17.5-27s) ===
+  // Full warm D major chord — the emotional payoff
+  pad(73.42, 17.5, 27, 0.1, 'sine');      // D2
+  pad(146.83, 17.5, 27, 0.09, 'sine');    // D3
+  pad(185.00, 17.8, 27, 0.07, 'triangle');// F#3 — MAJOR! The shift.
+  pad(220, 17.8, 27, 0.07, 'sine');       // A3
+  pad(293.66, 18, 27, 0.06, 'sine');      // D4
+  pad(369.99, 18.2, 27, 0.04, 'triangle');// F#4
+  pad(440, 18.5, 27, 0.03, 'sine');       // A4
+
+  // Bright bell motif — callback to opening but now in major
+  bell(587.33, 18, 5, 0.03);   // D5
+  bell(739.99, 19, 4, 0.02);   // F#5
+  bell(880, 19.8, 3.5, 0.015); // A5
+  bell(1174.66, 20.5, 3, 0.01);// D6
+
+  // Warm noise wash
+  noiseBurst(17.5, 8, 3000, 0.02, 0.3);
+
+  // Gentle pulse on the book stats reveal (20.5s)
+  bell(293.66, 20.5, 3, 0.02);
+  noiseBurst(20.5, 0.5, 500, 0.02, 1);
+
+  // === ACT 4: FINAL FADE (26-30s) ===
+  // Thin out to just the motif note and sub
+  bell(587.33, 26.5, 4, 0.015); // D5 — last echo of the motif
+  pad(146.83, 26, 30, 0.04, 'sine'); // D3 dying away
+
+  // Final ethereal shimmer
+  const lastShimmer = ac.createOscillator();
+  const lastShimmerG = ac.createGain();
+  const lastShimmerLfo = ac.createOscillator();
+  const lastShimmerLfoG = ac.createGain();
+  lastShimmer.type = 'sine';
+  lastShimmer.frequency.value = 1174.66; // D6
+  lastShimmerLfo.type = 'sine';
+  lastShimmerLfo.frequency.value = 0.25;
+  lastShimmerLfoG.gain.value = 4;
+  lastShimmerLfo.connect(lastShimmerLfoG);
+  lastShimmerLfoG.connect(lastShimmer.frequency);
+  lastShimmerG.gain.setValueAtTime(0, t + 26);
+  lastShimmerG.gain.linearRampToValueAtTime(0.008, t + 27.5);
+  lastShimmerG.gain.linearRampToValueAtTime(0, t + 30.5);
+  lastShimmer.connect(lastShimmerG);
+  lastShimmerG.connect(convolver);
+  lastShimmer.start(t + 26);
+  lastShimmer.stop(t + 31);
+  lastShimmerLfo.start(t + 26);
+  lastShimmerLfo.stop(t + 31);
+  musicNodes.push(lastShimmer, lastShimmerG, lastShimmerLfo, lastShimmerLfoG);
 }
 
 
