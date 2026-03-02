@@ -1470,7 +1470,198 @@
     });
 
     // Trailer animation engine
-    let trailerPlaying = false;
+    // === TRAILER MUSIC ===
+// Cinematic trailer score using Web Audio API
+// Timeline: 0-5s opening, 5-16s milestones build, 17-25s book reveal, 26-30s fade
+let audioCtx = null;
+let musicNodes = [];
+
+function stopTrailerMusic() {
+  musicNodes.forEach(n => {
+    try { n.stop ? n.stop() : null; } catch(e) {}
+    try { n.disconnect(); } catch(e) {}
+  });
+  musicNodes = [];
+  if (audioCtx) {
+    audioCtx.close().catch(() => {});
+    audioCtx = null;
+  }
+}
+
+function playTrailerMusic() {
+  stopTrailerMusic();
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const ac = audioCtx;
+  const now = ac.currentTime;
+  const masterGain = ac.createGain();
+  masterGain.gain.setValueAtTime(0, now);
+  masterGain.gain.linearRampToValueAtTime(0.35, now + 1);
+  masterGain.gain.setValueAtTime(0.35, now + 27);
+  masterGain.gain.linearRampToValueAtTime(0, now + 31);
+  masterGain.connect(ac.destination);
+  musicNodes.push(masterGain);
+
+  // Reverb via convolver (simple impulse response)
+  const convolver = ac.createConvolver();
+  const reverbLen = 3 * ac.sampleRate;
+  const impulse = ac.createBuffer(2, reverbLen, ac.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = impulse.getChannelData(ch);
+    for (let i = 0; i < reverbLen; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLen, 2.5);
+    }
+  }
+  convolver.buffer = impulse;
+  const reverbGain = ac.createGain();
+  reverbGain.gain.value = 0.3;
+  convolver.connect(reverbGain);
+  reverbGain.connect(masterGain);
+  musicNodes.push(convolver, reverbGain);
+
+  // Dry bus
+  const dryGain = ac.createGain();
+  dryGain.gain.value = 0.7;
+  dryGain.connect(masterGain);
+  musicNodes.push(dryGain);
+
+  function createOsc(type, freq, startTime, endTime, gainVal, destination) {
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now + startTime);
+    g.gain.setValueAtTime(0, now + startTime);
+    g.gain.linearRampToValueAtTime(gainVal, now + startTime + 1.5);
+    g.gain.setValueAtTime(gainVal, now + endTime - 1.5);
+    g.gain.linearRampToValueAtTime(0, now + endTime);
+    osc.connect(g);
+    g.connect(destination || dryGain);
+    g.connect(convolver);
+    osc.start(now + startTime);
+    osc.stop(now + endTime + 0.1);
+    musicNodes.push(osc, g);
+    return osc;
+  }
+
+  // === LAYER 1: Deep drone (entire duration) ===
+  // D1 (36.71 Hz) and A1 (55 Hz) — dark fifth
+  createOsc('sine', 36.71, 0, 30, 0.25);
+  createOsc('sine', 55, 0, 30, 0.18);
+  // Sub-octave rumble
+  createOsc('sine', 18.35, 0, 30, 0.12);
+
+  // === LAYER 2: Slow pad chords ===
+  // Scene 1 (0-5s): D minor — D3, F3, A3
+  createOsc('sine', 146.83, 0, 5.5, 0.06);   // D3
+  createOsc('triangle', 174.61, 0, 5.5, 0.04); // F3
+  createOsc('sine', 220, 0.5, 5.5, 0.05);      // A3
+
+  // Scene 2 milestones (6-16s): Building tension
+  // Bb minor — Bb2, Db3, F3 (darker)
+  createOsc('sine', 116.54, 5.5, 10, 0.06);   // Bb2
+  createOsc('triangle', 138.59, 5.5, 10, 0.04); // Db3
+  createOsc('sine', 174.61, 6, 10, 0.05);      // F3
+
+  // Rising: C minor — C3, Eb3, G3
+  createOsc('sine', 130.81, 10, 14, 0.07);
+  createOsc('triangle', 155.56, 10, 14, 0.05);
+  createOsc('sine', 196.00, 10.5, 14, 0.06);
+
+  // Tension peak: D minor 7 — D3, F3, A3, C4
+  createOsc('sine', 146.83, 14, 17.5, 0.08);
+  createOsc('triangle', 174.61, 14, 17.5, 0.06);
+  createOsc('sine', 220, 14, 17.5, 0.07);
+  createOsc('sine', 261.63, 14.5, 17.5, 0.05);
+
+  // === Scene 3: Book reveal (17-26s) — D major (resolution!) ===
+  createOsc('sine', 146.83, 17, 27, 0.09);    // D3
+  createOsc('triangle', 185.00, 17.5, 27, 0.06); // F#3
+  createOsc('sine', 220, 17.5, 27, 0.07);      // A3
+  createOsc('sine', 293.66, 18, 27, 0.05);     // D4 (octave)
+
+  // === LAYER 3: Milestone hits (percussive shimmer) ===
+  const milestoneTimings = [6.5, 8.5, 10.5, 12.5, 14.5]; // matches JS
+  milestoneTimings.forEach((t, i) => {
+    // Rising pitch for each milestone
+    const freq = 440 * Math.pow(2, (i * 2) / 12); // up by whole tones
+    const hit = ac.createOscillator();
+    const hitGain = ac.createGain();
+    hit.type = 'sine';
+    hit.frequency.setValueAtTime(freq, now + t);
+    hit.frequency.exponentialRampToValueAtTime(freq * 1.5, now + t + 0.8);
+    hitGain.gain.setValueAtTime(0, now + t);
+    hitGain.gain.linearRampToValueAtTime(0.08 + i * 0.015, now + t + 0.05);
+    hitGain.gain.exponentialRampToValueAtTime(0.001, now + t + 1.8);
+    hit.connect(hitGain);
+    hitGain.connect(dryGain);
+    hitGain.connect(convolver);
+    hit.start(now + t);
+    hit.stop(now + t + 2);
+    musicNodes.push(hit, hitGain);
+
+    // Sub-impact
+    const sub = ac.createOscillator();
+    const subG = ac.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(60 + i * 5, now + t);
+    sub.frequency.exponentialRampToValueAtTime(30, now + t + 0.5);
+    subG.gain.setValueAtTime(0, now + t);
+    subG.gain.linearRampToValueAtTime(0.12, now + t + 0.02);
+    subG.gain.exponentialRampToValueAtTime(0.001, now + t + 0.8);
+    sub.connect(subG);
+    subG.connect(dryGain);
+    sub.start(now + t);
+    sub.stop(now + t + 1);
+    musicNodes.push(sub, subG);
+  });
+
+  // === LAYER 4: Book reveal swell (17.5s) ===
+  const swellFreqs = [293.66, 369.99, 440, 587.33]; // D4, F#4, A4, D5
+  swellFreqs.forEach((freq, i) => {
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, now + 17.5);
+    g.gain.linearRampToValueAtTime(0.04, now + 18 + i * 0.3);
+    g.gain.setValueAtTime(0.04, now + 25);
+    g.gain.linearRampToValueAtTime(0, now + 28);
+    osc.connect(g);
+    g.connect(convolver);
+    g.connect(dryGain);
+    osc.start(now + 17.5);
+    osc.stop(now + 28.5);
+    musicNodes.push(osc, g);
+  });
+
+  // === LAYER 5: High ethereal shimmer ===
+  [0, 8, 17].forEach(startT => {
+    const lfo = ac.createOscillator();
+    const lfoGain = ac.createGain();
+    const shimmer = ac.createOscillator();
+    const shimmerGain = ac.createGain();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.3 + startT * 0.02;
+    lfoGain.gain.value = 3;
+    shimmer.type = 'sine';
+    shimmer.frequency.value = 1174.66; // D6
+    shimmerGain.gain.setValueAtTime(0, now + startT);
+    shimmerGain.gain.linearRampToValueAtTime(0.012, now + startT + 2);
+    shimmerGain.gain.setValueAtTime(0.012, now + startT + 7);
+    shimmerGain.gain.linearRampToValueAtTime(0, now + startT + 9);
+    lfo.connect(lfoGain);
+    lfoGain.connect(shimmer.frequency);
+    shimmer.connect(shimmerGain);
+    shimmerGain.connect(convolver);
+    lfo.start(now + startT);
+    shimmer.start(now + startT);
+    lfo.stop(now + startT + 10);
+    shimmer.stop(now + startT + 10);
+    musicNodes.push(lfo, lfoGain, shimmer, shimmerGain);
+  });
+}
+
+
+        let trailerPlaying = false;
     let trailerTimeouts = [];
 
     function clearTrailerTimeouts() {
@@ -1499,6 +1690,7 @@
       if (trailerPlaying) return;
       trailerPlaying = true;
       clearTrailerTimeouts();
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) playTrailerMusic();
 
       // Reset everything
       const ids = ['trS1','trS1a','trS1b','trS2','trM1','trM2','trM3','trM4','trM5','trS3','trBook','trInfo','trStats','trS4','trFinal','trDivider'];
