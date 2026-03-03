@@ -1439,11 +1439,11 @@
   <footer>
     <div class="footer-logo">The Meta-<span>Solution</span></div>
     <p class="footer-copy">© 2026 Paul Johnson. All rights reserved.</p>
-    <p class="footer-copy" style="margin-top:8px;color:var(--gold-dim);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fe8e9f8b92be8e9a949196908d9190d0909b8a">[email&#160;protected]</a></p>
+    <p class="footer-copy" style="margin-top:8px;color:var(--gold-dim);">paul@pdjohnson.net</p>
   </footer>
 
   <!-- ============ SCRIPTS ============ -->
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  <script>
     // Intersection Observer for scroll-triggered reveals
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -1877,7 +1877,7 @@ function _startTrailerMusic() {
       if (trailerPlaying) return;
       trailerPlaying = true;
       clearTrailerTimeouts();
-      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) playTrailerMusic();
+      // Audio removed
 
       // Reset everything
       const ids = ['trS1','trS1a','trS1b','trS2','trM1','trM2','trM3','trM4','trM5','trS3','trBook','trInfo','trStats','trS4','trFinal','trDivider'];
