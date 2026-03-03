@@ -1005,6 +1005,7 @@
       text-align: center;
       width: 90%;
       pointer-events: none;
+      z-index: 5;
     }
     .tr-milestone {
       position: absolute;
@@ -1144,7 +1145,7 @@
         </div>
 
         <!-- Gold divider -->
-        <div id="trDivider" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:0;height:1px;background:linear-gradient(90deg,transparent,rgba(210,190,130,0.5),transparent);z-index:10;"></div>
+        <div id="trDivider" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:0;height:1px;background:linear-gradient(90deg,transparent,rgba(210,190,130,0.5),transparent);z-index:1;"></div>
 
         <!-- SCENE 2: Milestones (each replaces the last) -->
         <div id="trS2" class="tr-scene" style="opacity:0;">
@@ -1155,7 +1156,7 @@
           </div>
           <div id="trM2" class="tr-milestone" style="opacity:0;">
             <div style="font-family:var(--font-display);font-size:clamp(36px,6vw,72px);font-weight:700;color:#d2be82;line-height:1;">2016</div>
-            <div style="font-family:var(--font-sans);font-size:clamp(10px,1.5vw,18px);letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-top:8px;">AlphaGo Defeats Lee Sedol</div>
+            <div style="font-family:var(--font-sans);font-size:clamp(10px,1.5vw,18px);letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-top:8px;">AlphaGo Wins</div>
             <div style="font-family:var(--font-display);font-size:clamp(12px,1.8vw,22px);font-style:italic;color:rgba(255,255,255,0.5);margin-top:4px;">The match that changed the world</div>
           </div>
           <div id="trM3" class="tr-milestone" style="opacity:0;">
@@ -1507,10 +1508,16 @@ function stopTrailerMusic() {
 
 function playTrailerMusic() {
   if (audioCtx) { stopTrailerMusic(); }
-  // Create AudioContext immediately within user gesture (required by mobile browsers)
+  // Create AudioContext within user gesture (required by mobile browsers)
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
-  // Small delay to ensure cleanup, but AudioContext is already unlocked
+  // Play a tiny silent buffer to fully unlock audio on Safari
+  var silentBuf = audioCtx.createBuffer(1, 1, 22050);
+  var silentSrc = audioCtx.createBufferSource();
+  silentSrc.buffer = silentBuf;
+  silentSrc.connect(audioCtx.destination);
+  silentSrc.start(0);
+  // Now start the real music after cleanup delay
   setTimeout(_startTrailerMusic, 100);
 }
 
@@ -1939,46 +1946,65 @@ function _startTrailerMusic() {
       // Fade out scene 2
       tDelay(() => { fadeOut(s2, 800); }, 17000);
 
-      // SCENE 3: Book reveal (17-25s)
-      const s3 = document.getElementById('trS3');
-      tDelay(() => { s3.style.transition = 'opacity 1.5s'; s3.style.opacity = '1'; }, 17500);
+      const isMobile = window.innerWidth <= 600;
 
-      const trBook = document.getElementById('trBook');
-      tDelay(() => {
-        trBook.style.transition = 'opacity 1.5s cubic-bezier(0.16,1,0.3,1), transform 1.5s cubic-bezier(0.16,1,0.3,1)';
-        trBook.style.opacity = '1';
-        trBook.style.transform = 'translateY(0)';
-      }, 18000);
+      if (!isMobile) {
+        // SCENE 3: Book reveal (17-25s) — desktop only
+        const s3 = document.getElementById('trS3');
+        tDelay(() => { s3.style.transition = 'opacity 1.5s'; s3.style.opacity = '1'; }, 17500);
 
-      const trInfo = document.getElementById('trInfo');
-      tDelay(() => {
-        trInfo.style.transition = 'opacity 1.5s cubic-bezier(0.16,1,0.3,1), transform 1.5s cubic-bezier(0.16,1,0.3,1)';
-        trInfo.style.opacity = '1';
-        trInfo.style.transform = 'translateX(0)';
-      }, 19000);
+        const trBook = document.getElementById('trBook');
+        tDelay(() => {
+          trBook.style.transition = 'opacity 1.5s cubic-bezier(0.16,1,0.3,1), transform 1.5s cubic-bezier(0.16,1,0.3,1)';
+          trBook.style.opacity = '1';
+          trBook.style.transform = 'translateY(0)';
+        }, 18000);
 
-      const trStats = document.getElementById('trStats');
-      tDelay(() => { trStats.style.transition = 'opacity 1s'; trStats.style.opacity = '1'; }, 20500);
+        const trInfo = document.getElementById('trInfo');
+        tDelay(() => {
+          trInfo.style.transition = 'opacity 1.5s cubic-bezier(0.16,1,0.3,1), transform 1.5s cubic-bezier(0.16,1,0.3,1)';
+          trInfo.style.opacity = '1';
+          trInfo.style.transform = 'translateX(0)';
+        }, 19000);
 
-      // SCENE 4: CTA
-      const s4 = document.getElementById('trS4');
-      tDelay(() => { s4.style.transition = 'opacity 1.5s'; s4.style.opacity = '1'; }, 22000);
+        const trStats = document.getElementById('trStats');
+        tDelay(() => { trStats.style.transition = 'opacity 1s'; trStats.style.opacity = '1'; }, 20500);
 
-      // Final fade
-      const trFinal = document.getElementById('trFinal');
-      tDelay(() => {
-        fadeOut(s3, 1500);
-        fadeOut(s4, 1500);
-        trFinal.style.transition = 'opacity 2s';
-        trFinal.style.opacity = '1';
-      }, 26000);
+        // SCENE 4: CTA — desktop only
+        const s4 = document.getElementById('trS4');
+        tDelay(() => { s4.style.transition = 'opacity 1.5s'; s4.style.opacity = '1'; }, 22000);
 
-      // Show replay
-      tDelay(() => {
-        document.getElementById('trReplay').style.opacity = '1';
-        document.getElementById('trReplay').style.pointerEvents = 'auto';
-        trailerPlaying = false;
-      }, 30000);
+        // Final fade — desktop timing
+        const trFinal = document.getElementById('trFinal');
+        tDelay(() => {
+          fadeOut(s3, 1500);
+          fadeOut(s4, 1500);
+          trFinal.style.transition = 'opacity 2s';
+          trFinal.style.opacity = '1';
+        }, 26000);
+
+        // Show replay — desktop timing
+        tDelay(() => {
+          document.getElementById('trReplay').style.opacity = '1';
+          document.getElementById('trReplay').style.pointerEvents = 'auto';
+          trailerPlaying = false;
+        }, 30000);
+
+      } else {
+        // MOBILE: Skip scenes 3+4, go straight to final after milestones
+        const trFinal = document.getElementById('trFinal');
+        tDelay(() => {
+          trFinal.style.transition = 'opacity 2s';
+          trFinal.style.opacity = '1';
+        }, 18000);
+
+        // Show replay — mobile timing
+        tDelay(() => {
+          document.getElementById('trReplay').style.opacity = '1';
+          document.getElementById('trReplay').style.pointerEvents = 'auto';
+          trailerPlaying = false;
+        }, 22000);
+      }
     }
 
     // Click play to start
