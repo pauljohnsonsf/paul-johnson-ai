@@ -949,11 +949,11 @@
       .hero-content {
         flex-direction: column;
         text-align: center;
-        padding: 120px 30px 60px;
+        padding: 120px 30px 100px;
         gap: 40px;
       }
 
-      .hero-cta-row { justify-content: center; }
+      .hero-cta-row { justify-content: center; flex-wrap: wrap; gap: 14px; }
 
       #story, #sources, #author { padding: 80px 30px; }
 
@@ -989,7 +989,12 @@
 
     @media (max-width: 600px) {
       .chapters-grid { grid-template-columns: 1fr; }
+      .chapters-grid .ch-item { order: unset !important; }
       .hero-title { font-size: 36px; }
+      .hero-cta-row { flex-direction: column; align-items: center; width: 100%; }
+      .hero-cta-row .btn-primary,
+      .hero-cta-row .btn-secondary { width: 100%; max-width: 280px; justify-content: center; text-align: center; }
+      .scroll-hint { display: none; }
     }
 
     /* Trailer cinema styles */
@@ -1325,24 +1330,24 @@
         </div>
       </div>
       <div class="chapters-grid">
-        <div class="ch-item reveal"><span class="ch-num">1</span><span class="ch-name">The Chess Prodigy</span></div>
-        <div class="ch-item reveal"><span class="ch-num">10</span><span class="ch-name">The Nature Paper</span></div>
-        <div class="ch-item reveal reveal-delay-1"><span class="ch-num">2</span><span class="ch-name">Building Elixir</span></div>
-        <div class="ch-item reveal reveal-delay-1"><span class="ch-num">11</span><span class="ch-name">Protein Folding</span></div>
-        <div class="ch-item reveal reveal-delay-2"><span class="ch-num">3</span><span class="ch-name">Theme Park to Neuroscience</span></div>
-        <div class="ch-item reveal reveal-delay-2"><span class="ch-num">12</span><span class="ch-name">Nobel Prize</span></div>
-        <div class="ch-item reveal reveal-delay-2"><span class="ch-num">4</span><span class="ch-name">The Founding of DeepMind</span></div>
-        <div class="ch-item reveal reveal-delay-2"><span class="ch-num">13</span><span class="ch-name">Gemini Rising</span></div>
-        <div class="ch-item reveal reveal-delay-3"><span class="ch-num">5</span><span class="ch-name">The $500M Bet</span></div>
-        <div class="ch-item reveal reveal-delay-3"><span class="ch-num">14</span><span class="ch-name">The Safety Question</span></div>
-        <div class="ch-item reveal reveal-delay-3"><span class="ch-num">6</span><span class="ch-name">Inside Google</span></div>
-        <div class="ch-item reveal reveal-delay-3"><span class="ch-num">15</span><span class="ch-name">AGI Timelines</span></div>
-        <div class="ch-item reveal reveal-delay-4"><span class="ch-num">7</span><span class="ch-name">Atari & Deep RL</span></div>
-        <div class="ch-item reveal reveal-delay-4"><span class="ch-num">16</span><span class="ch-name">The Race</span></div>
-        <div class="ch-item reveal reveal-delay-4"><span class="ch-num">8</span><span class="ch-name">AlphaGo: Seoul</span></div>
-        <div class="ch-item reveal reveal-delay-4"><span class="ch-num">17</span><span class="ch-name">The Meta-Solution</span></div>
-        <div class="ch-item reveal reveal-delay-5"><span class="ch-num">9</span><span class="ch-name">AlphaFold Begins</span></div>
-        <div class="ch-item reveal reveal-delay-5"><span class="ch-num" style="color:var(--gold-dim)">+</span><span class="ch-name" style="font-style:italic; color:var(--gold-dim)">Epilogue</span></div>
+        <div class="ch-item reveal" style="order:1"><span class="ch-num">1</span><span class="ch-name">The Resignation</span></div>
+        <div class="ch-item reveal" style="order:3"><span class="ch-num">2</span><span class="ch-name">Theme Park</span></div>
+        <div class="ch-item reveal reveal-delay-1" style="order:5"><span class="ch-num">3</span><span class="ch-name">The Hippocampus</span></div>
+        <div class="ch-item reveal reveal-delay-1" style="order:7"><span class="ch-num">4</span><span class="ch-name">Solve Intelligence</span></div>
+        <div class="ch-item reveal reveal-delay-2" style="order:9"><span class="ch-num">5</span><span class="ch-name">The Atari Breakthrough</span></div>
+        <div class="ch-item reveal reveal-delay-2" style="order:11"><span class="ch-num">6</span><span class="ch-name">Move 37</span></div>
+        <div class="ch-item reveal reveal-delay-3" style="order:13"><span class="ch-num">7</span><span class="ch-name">The Cathedral</span></div>
+        <div class="ch-item reveal reveal-delay-3" style="order:15"><span class="ch-num">8</span><span class="ch-name">Bigger Than Go</span></div>
+        <div class="ch-item reveal reveal-delay-4" style="order:17"><span class="ch-num">9</span><span class="ch-name">The Hassabis Conjecture</span></div>
+        <div class="ch-item reveal" style="order:2"><span class="ch-num">10</span><span class="ch-name">Stockholm</span></div>
+        <div class="ch-item reveal reveal-delay-1" style="order:4"><span class="ch-num">11</span><span class="ch-name">The Merger</span></div>
+        <div class="ch-item reveal reveal-delay-1" style="order:6"><span class="ch-num">12</span><span class="ch-name">The Thinker and the Worrier</span></div>
+        <div class="ch-item reveal reveal-delay-2" style="order:8"><span class="ch-num">13</span><span class="ch-name">World Models</span></div>
+        <div class="ch-item reveal reveal-delay-2" style="order:10"><span class="ch-num">14</span><span class="ch-name">Isomorphic</span></div>
+        <div class="ch-item reveal reveal-delay-3" style="order:12"><span class="ch-num">15</span><span class="ch-name">Deep Think</span></div>
+        <div class="ch-item reveal reveal-delay-3" style="order:14"><span class="ch-num">16</span><span class="ch-name">The Day After</span></div>
+        <div class="ch-item reveal reveal-delay-4" style="order:16"><span class="ch-num">17</span><span class="ch-name">The Infinite Game</span></div>
+        <div class="ch-item reveal reveal-delay-5" style="order:18"><span class="ch-num" style="color:var(--gold-dim)">+</span><span class="ch-name" style="font-style:italic; color:var(--gold-dim)">Epilogue</span></div>
       </div>
     </div>
   </section>
@@ -1433,11 +1438,11 @@
   <footer>
     <div class="footer-logo">The Meta-<span>Solution</span></div>
     <p class="footer-copy">© 2026 Paul Johnson. All rights reserved.</p>
-    <p class="footer-copy" style="margin-top:8px;color:var(--gold-dim);">paul@pdjohnson.net</p>
+    <p class="footer-copy" style="margin-top:8px;color:var(--gold-dim);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fe8e9f8b92be8e9a949196908d9190d0909b8a">[email&#160;protected]</a></p>
   </footer>
 
   <!-- ============ SCRIPTS ============ -->
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     // Intersection Observer for scroll-triggered reveals
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -1502,12 +1507,16 @@ function stopTrailerMusic() {
 
 function playTrailerMusic() {
   if (audioCtx) { stopTrailerMusic(); }
-  // Small delay to ensure cleanup
+  // Create AudioContext immediately within user gesture (required by mobile browsers)
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  // Small delay to ensure cleanup, but AudioContext is already unlocked
   setTimeout(_startTrailerMusic, 100);
 }
 
 function _startTrailerMusic() {
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   const ac = audioCtx;
   const t = ac.currentTime + 0.05;
   musicNodes = [];
