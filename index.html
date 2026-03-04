@@ -110,14 +110,14 @@
       margin: 20px 0;
     }
 
-    /* Scroll-triggered animations */
-    .reveal {
+    /* Scroll-triggered animations — only hidden when JS is active */
+    .js-ready .reveal {
       opacity: 0;
       transform: translateY(40px);
       transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out);
     }
 
-    .reveal.visible {
+    .js-ready .reveal.visible {
       opacity: 1;
       transform: translateY(0);
     }
@@ -1397,21 +1397,21 @@
         <div class="format-icon">📱</div>
         <div class="format-name">Kindle</div>
         <div class="format-price">$9.99</div>
-        <div class="format-note">Instant download</div>
+        <div class="format-note">ISBN 979-8-9951292-0-2</div>
         <a href="https://www.amazon.com/dp/B0F1Y8SQKJ" class="format-cta" target="_blank" rel="noopener">Buy on Amazon →</a>
       </div>
       <div class="format-card featured reveal reveal-delay-1">
         <div class="format-icon">📖</div>
         <div class="format-name">Paperback</div>
         <div class="format-price">$14.99</div>
-        <div class="format-note">ISBN 978-0-9951292-1-9</div>
+        <div class="format-note">ISBN 979-8-9951292-1-9</div>
         <a href="https://www.amazon.com/dp/B0F1Y8SQKJ" class="format-cta" target="_blank" rel="noopener">Buy on Amazon →</a>
       </div>
       <div class="format-card reveal reveal-delay-2">
         <div class="format-icon">📚</div>
         <div class="format-name">Hardcover</div>
         <div class="format-price">$19.99</div>
-        <div class="format-note">ISBN 978-0-9951292-2-6</div>
+        <div class="format-note">ISBN 979-8-9951292-2-6</div>
         <a href="https://www.amazon.com/dp/B0F1Y8SQKJ" class="format-cta" target="_blank" rel="noopener">Buy on Amazon →</a>
       </div>
     </div>
@@ -1426,7 +1426,7 @@
     </div>
     <div class="author-body">
       <p class="reveal">I first encountered Demis Hassabis the way millions of people did: through a video game. I was a kid in the English countryside, glued to a chunky PC, building roller coasters and burger stalls in <em>Theme Park</em>. I had no idea that the teenager who had helped design it was already thinking about artificial intelligence, or that his career would trace an arc from that game to the Nobel Prize. I just knew the game was brilliant.</p>
-      <p class="reveal">Decades later, living in San Francisco, I found myself returning to the story. Not because of nostalgia, but because of recognition. I grew up in a small village in the UK with a dream of making it to Silicon Valley. In 2013, with no connections and no safety net, I moved to San Francisco to co-found <strong>Lemonaid Health</strong>, a telehealth company built on the belief that technology could make healthcare more accessible. Over eight years my team and I lived the roller coaster ride of running a startup (no longer in a video game). <strong>We sold the company for four hundred million dollars in 2021</strong> and I became a venture capitalist. I'm now a <strong>General Partner at Flex Capital</strong> and invest $500k in pre-seed and seed stage AI companies.</p>
+      <p class="reveal">Decades later, living in San Francisco, I found myself returning to the story. Not because of nostalgia, but because of recognition. I grew up in a small village in the UK with a dream of making it to Silicon Valley. In 2013, with no connections and no safety net, I moved to San Francisco to co-found <strong>Lemonaid Health</strong>, a telehealth company built on the belief that technology could make healthcare more accessible. Over eight years my team and I lived the roller coaster ride of running a startup (no longer in a video game). <strong>We sold the company for four hundred million dollars in 2021</strong> and I became a venture capitalist. I'm now a <strong>General Partner at <a href="https://www.flexcapital.com/" target="_blank" rel="noopener">Flex Capital</a></strong> and invest $500k in pre-seed and seed stage AI companies.</p>
       <p class="reveal">The entrepreneurial journey is, at its core, a story about conviction: about believing something is possible before you have any evidence, about persuading other people to believe it too, and about enduring the years when it looks like it might not work. Hassabis had all of that, but at a scale and with stakes that dwarfed anything I had experienced. He was not trying to build a company. <strong>He was trying to build a mind.</strong></p>
       <p class="reveal">What fascinated me most was the gap between how the world saw DeepMind — as a Google subsidiary, a research lab, a maker of game-playing programs — and what Hassabis was actually trying to do. The ambition was so large that most people simply could not see it. I wanted to write the book that made it visible: the human story behind the most consequential scientific project of our time.</p>
       <p class="reveal">I'm not a natural writer. In fact English was one of my weakest subjects at school. So this book was written by AI and I served as the director and editor.</p>
@@ -1439,24 +1439,42 @@
   <footer>
     <div class="footer-logo">The Meta-<span>Solution</span></div>
     <p class="footer-copy">© 2026 Paul Johnson. All rights reserved.</p>
-    <p class="footer-copy" style="margin-top:8px;color:var(--gold-dim);">paul@pdjohnson.net</p>
+    <p class="footer-copy" style="margin-top:8px;color:var(--gold-dim);"><a href="mailto:paul@pdjohnson.net">paul@pdjohnson.net</a></p>
+    <p class="footer-copy" style="margin-top:8px;color:var(--gold-dim);"><a href="https://pdjohnson.net/" target="_blank" rel="noopener">pdjohnson.net</a></p>
   </footer>
 
   <!-- ============ SCRIPTS ============ -->
   <script>
-    // Intersection Observer for scroll-triggered reveals
+    // Scroll-triggered reveals with fallback
+    document.documentElement.classList.add('js-ready');
+
+    function revealVisible() {
+      document.querySelectorAll('.reveal:not(.visible)').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight - 30) {
+          el.classList.add('visible');
+        }
+      });
+    }
+
+    // IntersectionObserver (primary)
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
         }
       });
-    }, {
-      threshold: 0.1,
-      rootMargin: '0px 0px -40px 0px'
-    });
+    }, { threshold: 0.05, rootMargin: '0px 0px 0px 0px' });
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Scroll + resize fallback
+    window.addEventListener('scroll', revealVisible, { passive: true });
+    window.addEventListener('resize', revealVisible, { passive: true });
+
+    // Run immediately and after short delay to catch elements already in view
+    revealVisible();
+    setTimeout(revealVisible, 300);
 
     // Nav scroll effect
     const nav = document.getElementById('nav');
@@ -2009,12 +2027,4 @@ function _startTrailerMusic() {
 
     // Click play to start
     document.getElementById('trailerPlay').addEventListener('click', playTrailer);
-    document.getElementById('trailerCinema').addEventListener('click', function(e) {
-      if (!trailerPlaying && document.getElementById('trailerPlay').style.opacity !== '0') {
-        playTrailer();
-      }
-    });
-  </script>
-
-</body>
-</html>
+    document.get
