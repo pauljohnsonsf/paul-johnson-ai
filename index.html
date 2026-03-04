@@ -122,11 +122,12 @@
       transform: translateY(0);
     }
 
-    .reveal-delay-1 { transition-delay: 0.12s; }
-    .reveal-delay-2 { transition-delay: 0.24s; }
-    .reveal-delay-3 { transition-delay: 0.36s; }
-    .reveal-delay-4 { transition-delay: 0.48s; }
-    .reveal-delay-5 { transition-delay: 0.6s; }
+    /* Scoped to .js-ready so they override the transition shorthand's implicit delay:0s */
+    .js-ready .reveal.reveal-delay-1 { transition-delay: 0.12s; }
+    .js-ready .reveal.reveal-delay-2 { transition-delay: 0.24s; }
+    .js-ready .reveal.reveal-delay-3 { transition-delay: 0.36s; }
+    .js-ready .reveal.reveal-delay-4 { transition-delay: 0.48s; }
+    .js-ready .reveal.reveal-delay-5 { transition-delay: 0.6s; }
 
 
     /* Skip to main content link */
@@ -1218,7 +1219,7 @@
         </div>
 
         <!-- Replay button (hidden initially) -->
-        <div id="trReplay" style="position:absolute;bottom:12px;right:16px;z-index:50;opacity:0;pointer-events:none;cursor:pointer;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(210,190,130,0.4);transition:color 0.3s;" onmouseover="this.style.color='rgba(210,190,130,0.8)'" onmouseout="this.style.color='rgba(210,190,130,0.4)'" onclick="playTrailer()">↻ Replay</div>
+        <div id="trReplay" style="position:absolute;bottom:12px;right:16px;z-index:50;opacity:0;pointer-events:none;cursor:pointer;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(210,190,130,0.4);transition:color 0.3s;" onmouseover="this.style.color='rgba(210,190,130,0.8)'" onmouseout="this.style.color='rgba(210,190,130,0.4)'">↻ Replay</div>
       </div>
     </div>
   </section>
@@ -1445,36 +1446,59 @@
 
   <!-- ============ SCRIPTS ============ -->
   <script>
-    // Scroll-triggered reveals with fallback
+    // Mark JS as active — reveals become opacity:0 and animate in on scroll
     document.documentElement.classList.add('js-ready');
 
+    // Fallback: reveal anything whose top edge is within the viewport
     function revealVisible() {
-      document.querySelectorAll('.reveal:not(.visible)').forEach(el => {
-        const rect = el.getBoundingClientRect();
-        if (rect.top < window.innerHeight - 30) {
+      document.querySelectorAll('.reveal:not(.visible)').forEach(function(el) {
+        var rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight - 20 && rect.bottom > 0) {
           el.classList.add('visible');
         }
       });
     }
 
-    // IntersectionObserver (primary)
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
+    // Primary: IntersectionObserver
+    // threshold:0 fires the moment any pixel enters the zone.
+    // rootMargin -20px bottom means the trigger line is 20px inside the viewport,
+    // so animations start just as the element becomes clearly visible.
+    if ('IntersectionObserver' in window) {
+      var revealObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0, rootMargin: '0px 0px -20px 0px' });
+
+      // Wait one animation frame so layout is fully computed before observing
+      requestAnimationFrame(function() {
+        document.querySelectorAll('.reveal').forEach(function(el) {
+          revealObserver.observe(el);
+        });
+        revealVisible();
       });
-    }, { threshold: 0.05, rootMargin: '0px 0px 0px 0px' });
+    } else {
+      window.addEventListener('scroll', revealVisible, { passive: true });
+      revealVisible();
+    }
 
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-    // Scroll + resize fallback
+    // Belt-and-suspenders: scroll + resize fallback always active
     window.addEventListener('scroll', revealVisible, { passive: true });
     window.addEventListener('resize', revealVisible, { passive: true });
 
-    // Run immediately and after short delay to catch elements already in view
+    // Re-run once all images/fonts have loaded (layout may shift)
+    window.addEventListener('load', function() {
+      revealVisible();
+      setTimeout(revealVisible, 300);
+    });
+
+    // Immediate + staggered catches
     revealVisible();
-    setTimeout(revealVisible, 300);
+    setTimeout(revealVisible, 150);
+    setTimeout(revealVisible, 600);
 
     // Nav scroll effect
     const nav = document.getElementById('nav');
@@ -2019,4 +2043,21 @@ function _startTrailerMusic() {
         // Show replay — mobile timing
         tDelay(() => {
           document.getElementById('trReplay').style.opacity = '1';
-          document.getElement
+          document.getElementById('trReplay').style.pointerEvents = 'auto';
+          trailerPlaying = false;
+        }, 21000);
+      }
+    }
+
+    // Attach click handler to the play button
+    document.getElementById('trailerPlay').addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (!trailerPlaying) playTrailer();
+    });
+    document.getElementById('trailerCinema').addEventListener('click', function() {
+      if (!trailerPlaying) playTrailer();
+    });
+
+  </script>
+</body>
+</html>
